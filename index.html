@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jadwal Pelajaran Real-Time</title>
+<style>
+:root{
+  --bg:#f3f6f1;--surface:#ffffff;--ink:#1d2a22;--muted:#5d6b62;--line:#d5ddd3;
+  --accent:#1f6b4a;--accent-ink:#ffffff;--now:#e7f3ea;--break:#fff3d6;--break-ink:#7a5a00;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111a15;--surface:#1a2620;--ink:#e8f0ea;--muted:#9fb0a5;--line:#2c3b33;
+  --accent:#5fcf9a;--accent-ink:#0c1a12;--now:#20382c;--break:#3a3015;--break-ink:#f2d27a;}}
+:root[data-theme="dark"]{--bg:#111a15;--surface:#1a2620;--ink:#e8f0ea;--muted:#9fb0a5;--line:#2c3b33;
+  --accent:#5fcf9a;--accent-ink:#0c1a12;--now:#20382c;--break:#3a3015;--break-ink:#f2d27a;}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px 120px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:1.6rem;margin:0;line-height:1.2}
+.sub{color:var(--muted);margin:4px 0 0}
+.clock{text-align:right}
+.clock b{display:block;font-size:2.4rem;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1}
+.clock span{display:block;color:var(--muted);font-size:.95rem}
+.clock #ph{color:var(--accent);font-weight:700}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:4px}
+.tabs button{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;border-radius:999px;font:inherit;cursor:pointer;white-space:nowrap}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tabs button:focus-visible,.wbtn:focus-visible,#pill:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+ul{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+li{display:grid;grid-template-columns:110px 1fr auto;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+li:last-child{border-bottom:0}
+li .t{font-variant-numeric:tabular-nums;color:var(--muted)}
+li .n{font-weight:600}
+li.brk{background:var(--break);color:var(--break-ink)}
+li.brk .t{color:inherit}
+li.now{background:var(--now);box-shadow:inset 5px 0 0 var(--accent)}
+li.done{opacity:.5}
+.tag{font-size:.8rem;background:var(--accent);color:var(--accent-ink);padding:2px 10px;border-radius:999px}
+.room{margin:0 0 10px;color:var(--muted)}
+.s{display:block;color:var(--muted);font-size:.85rem;font-weight:400}
+li.brk .s{color:inherit}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+#w{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;width:min(340px,calc(100vw - 32px));
+  background:var(--accent);color:var(--accent-ink);border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.28);overflow:hidden}
+#w .head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 0;font-size:.9rem}
+.wbtn{background:transparent;border:1px solid currentColor;color:inherit;border-radius:8px;padding:2px 10px;font:inherit;cursor:pointer}
+#w .body{padding:6px 14px 14px}
+#w .lbl{font-size:1.05rem;font-weight:600}
+#w .cd{font-size:2.6rem;font-variant-numeric:tabular-nums;font-weight:700;line-height:1.1}
+#w .nx{font-size:.9rem;opacity:.9}
+#w .home{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.35);font-size:.95rem;font-weight:600;font-variant-numeric:tabular-nums}
+.bar{height:6px;background:rgba(255,255,255,.3);border-radius:3px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:currentColor;transition:width 1s linear}
+#pill{display:none;width:100%;flex-direction:column;align-items:stretch;gap:2px;text-align:left;border:0;background:transparent;color:inherit;font:inherit;padding:10px 14px;cursor:pointer}
+#pill b{font-variant-numeric:tabular-nums;font-size:1.15rem}
+#pill .r1{display:flex;justify-content:space-between;align-items:center;gap:14px}
+#pill .r2{font-size:.85rem;opacity:.9;font-variant-numeric:tabular-nums}
+#w.min .head,#w.min .body{display:none}
+#w.min #pill{display:flex}
+body.mini .wrap{display:none}
+body.mini #w{inset:0;width:auto;max-width:none;min-width:0;border-radius:0;box-shadow:none;display:flex}
+body.mini #pill{height:100%;align-items:center;justify-content:center;text-align:center;gap:1.5vmin;padding:calc(2vmin + env(safe-area-inset-top,0px)) 2vmin calc(2vmin + env(safe-area-inset-bottom,0px))}
+body.mini #pill .r1{flex-direction:column;gap:1vmin}
+body.mini #pl{font-size:clamp(.85rem,min(6vw,7vh),2.4rem);font-weight:600;line-height:1.2}
+body.mini #pc{font-size:min(20vw,30vh);line-height:1}
+body.mini #pill .r2{font-size:clamp(.8rem,min(4.5vw,5.5vh),1.7rem);font-weight:600}
+@media (max-width:520px){li{grid-template-columns:90px 1fr auto;padding:12px}.clock b{font-size:2rem}}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Jadwal Pelajaran</h1>
+      <p class="sub">Kelas XII RPL 3</p>
+    </div>
+    <div class="clock"><b id="clk">--:--:--</b><span id="dt"></span><span id="ph"></span></div>
+  </header>
+  <div class="tabs" id="tabs" role="group" aria-label="Pilih hari"></div>
+  <p class="room" id="room"></p>
+  <ul id="list"></ul>
+</div>
+
+<aside id="w" aria-live="off">
+  <div class="head"><span>Hitung mundur</span><button class="wbtn" id="mn" aria-label="Kecilkan">Kecilkan</button></div>
+  <div class="body">
+    <div class="lbl" id="wl">Memuat…</div>
+    <div class="cd" id="wc">--:--</div>
+    <div class="nx" id="wn"></div>
+    <div class="home" id="wh"></div>
+    <div class="bar"><i id="wb"></i></div>
+  </div>
+  <button id="pill" aria-label="Perbesar hitung mundur"><span class="r1"><span id="pl">Memuat…</span><b id="pc">--:--</b></span><span class="r2" id="pp"></span></button>
+</aside>
+
+<script>
+/* ===== PENGATURAN WAKTU (edit di sini) ===== */
+var MULAI="07:00";            // jam pelajaran ke-1 mulai
+var DURASI=40;                // menit per jam pelajaran
+var ISTIRAHAT={4:20,6:60};    // {setelah jam ke-X : lama istirahat (menit)}
+                              // 4:20 -> 09:40–10:00 | 6:60 -> 11:20–12:20
+
+/* ===== JADWAL XII RPL 3 (edit di sini) =====
+   p: [jam awal, jam akhir, "KODE-NOMORGURU"]   r: ruang */
+var J={
+ 1:{r:"STI 1",p:[[1,2,"KIK-48/PKL"],[3,3,"BK"],[4,5,"B.ING-11"],[6,8,"IoT-52/PKL"],[9,10,"B.IND-19"]]},
+ 2:{r:"LAB RPL 2 (lantai 2)",p:[[1,8,"BD-48/PKL"],[9,10,"PP-17"]]},
+ 3:{r:"LRT 2",p:[[1,10,"PWEB-55/PKL"]]},
+ 4:{r:"LAB 1 (lantai 2)",p:[[1,10,"PBO-48/PKL"]]},
+ 5:{r:"LAB RPL 2 (lantai 2)",p:[[1,2,"MTK-8"],[3,4,"PABP-41"],[5,6,"BD-48/PKL"],[7,8,"SUN-5"]]}
+};
+var NAMA={KIK:"Kreativitas, Inovasi & Kewirausahaan",BK:"Bimbingan Konseling","B.ING":"Bahasa Inggris","B.IND":"Bahasa Indonesia",IoT:"Internet of Things",BD:"Basis Data",PP:"Pendidikan Pancasila",PWEB:"Pemrograman Web",PBO:"Pemrograman Berorientasi Objek",MTK:"Matematika",PABP:"Pendidikan Agama & Budi Pekerti",SUN:"Bahasa Sunda"};
+var GURU={13:"Rizqy Sopiyan, S.T",31:"Gustavianto Nusantoro, M.Kom",48:"Yuli Supriyanto, S.Kom, M.Pd",52:"Yuyus Purnama, ST",55:"Andi Arfian, M.Kom",58:"Auliya Naimah, M.Pd",59:"Agus Darsono, S.Kom",61:"Ahmad Muchlis, S.Kom"};
+
+/* ===== Penyusun jadwal otomatis (tidak perlu diubah) ===== */
+var S={};
+(function(){
+  var slot=[],t=sec(MULAI);
+  for(var j=1;j<=10;j++){slot[j]=[t,t+DURASI*60];t+=DURASI*60;if(ISTIRAHAT[j])t+=ISTIRAHAT[j]*60}
+  function hm(s){return pad(Math.floor(s/3600))+":"+pad(Math.floor(s%3600/60))}
+  Object.keys(J).forEach(function(d){
+    var items=[],last=0,blk=[],n=0;
+    J[d].p.forEach(function(p,i){for(var j=p[0];j<=p[1];j++)blk[j]=i;last=Math.max(last,p[1])});
+    var j=1;
+    while(j<=last){
+      var i=blk[j],k=j;
+      while(k<last&&blk[k+1]===i&&!ISTIRAHAT[k])k++;
+      var m=/^(.+?)(?:-(\d+))?(\/PKL)?$/.exec(J[d].p[i][2]);
+      var sub="Jam ke-"+(j===k?j:j+"–"+k)+(GURU[m[2]]?" · "+GURU[m[2]]:"")+(m[3]?" · PKL":"");
+      items.push([hm(slot[j][0]),hm(slot[k][1]),NAMA[m[1]]||m[1],0,sub]);
+      if(ISTIRAHAT[k]&&k<last){n++;items.push([hm(slot[k][1]),hm(slot[k][1]+ISTIRAHAT[k]*60),"Istirahat "+n,1,ISTIRAHAT[k]+" menit"])}
+      j=k+1;
+    }
+    S[d]=items;
+  });
+})();
+var HARI=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+var BULAN=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+function sec(t){var p=t.split(":");return p[0]*3600+p[1]*60}
+function pad(n){return n<10?"0"+n:""+n}
+function fmt(s){s=Math.max(0,s);var h=Math.floor(s/3600),m=Math.floor(s%3600/60),d=s%60;return(h?h+":":"")+pad(m)+":"+pad(d)}
+var $=function(i){return document.getElementById(i)};
+var sel=new Date().getDay();
+var lastKey="";
+
+function buildTabs(){
+  var t=$("tabs");t.innerHTML="";$("room").textContent="Ruang hari "+HARI[sel]+": "+J[sel].r;
+  [1,2,3,4,5].forEach(function(d){
+    var b=document.createElement("button");b.textContent=HARI[d];
+    b.setAttribute("aria-pressed",d===sel);
+    b.onclick=function(){sel=d;buildTabs();lastKey="";tick()};
+    t.appendChild(b);
+  });
+}
+
+function renderList(now,today,s){
+  var items=S[sel];var ul=$("list");
+  var key=sel+"|"+(today===sel?items&&items.map(function(x){return s>=sec(x[0])&&s<sec(x[1])?1:s>=sec(x[1])?2:0}).join(""):"x");
+  if(key===lastKey)return;lastKey=key;
+  if(!items){ul.innerHTML='<div class="empty">Libur — tidak ada pelajaran.</div>';return}
+  ul.innerHTML="";
+  items.forEach(function(x){
+    var li=document.createElement("li");var cls=[];
+    if(x[3])cls.push("brk");
+    var on=today===sel&&s>=sec(x[0])&&s<sec(x[1]);
+    if(on)cls.push("now");
+    if(today===sel&&s>=sec(x[1]))cls.push("done");
+    li.className=cls.join(" ");
+    li.innerHTML='<span class="t">'+x[0]+' – '+x[1]+'</span><span><b class="n"></b><small class="s"></small></span>'+(on?'<span class="tag">Sekarang</span>':'<span></span>');
+    li.querySelector(".n").textContent=x[2];li.querySelector(".s").textContent=x[4]||"";
+    ul.appendChild(li);
+  });
+}
+
+function tick(){
+  var now=new Date();var s=now.getHours()*3600+now.getMinutes()*60+now.getSeconds();var today=now.getDay();
+  $("clk").textContent=pad(now.getHours())+":"+pad(now.getMinutes())+":"+pad(now.getSeconds());
+  $("dt").textContent=HARI[today]+", "+now.getDate()+" "+BULAN[now.getMonth()]+" "+now.getFullYear();
+  renderList(now,today,s);
+
+  var items=S[today],lbl,cd,nx="",pct=0;
+  if(!items){lbl="Hari ini libur";cd="--:--";nx="Selamat beristirahat";}
+  else{
+    var cur=null,next=null;
+    for(var i=0;i<items.length;i++){
+      var a=sec(items[i][0]),b=sec(items[i][1]);
+      if(s>=a&&s<b){cur=items[i];next=items[i+1]||null;break}
+      if(s<a){next=items[i];break}
+    }
+    if(cur){
+      var a=sec(cur[0]),b=sec(cur[1]);
+      lbl=cur[2]+" (selesai dalam)";cd=fmt(b-s);pct=(s-a)/(b-a)*100;
+      nx=next?"Berikutnya: "+next[2]+" · "+next[0]:"Ini pelajaran terakhir hari ini";
+    }else if(next){
+      lbl="Mulai "+next[2]+" dalam";cd=fmt(sec(next[0])-s);
+      nx=next[0]+" – "+next[1];
+    }else{lbl="Pelajaran hari ini selesai";cd="00:00";nx="Sampai jumpa besok!";pct=100}
+  }
+  var home="Hari ini libur";
+  if(items){var eD=sec(items[items.length-1][1]);home=s<eD?"Pulang dalam "+fmt(eD-s)+" (pukul "+items[items.length-1][1]+")":"Pelajaran selesai, waktunya pulang";}
+  $("wh").textContent=home;$("pp").textContent=home;$("ph").textContent=home;
+  $("wl").textContent=lbl;$("wc").textContent=cd;$("wn").textContent=nx;$("wb").style.width=pct+"%";
+  $("pl").textContent=lbl.replace(" (selesai dalam)","");$("pc").textContent=cd;
+  document.title=cd+" · Jadwal Pelajaran";
+}
+
+function setMin(v){
+  $("w").classList.toggle("min",v);document.body.classList.toggle("mini",v);
+  try{localStorage.setItem("jadwalMin",v?"1":"0")}catch(e){}
+}
+$("mn").onclick=function(){setMin(true)};
+$("pill").onclick=function(){setMin(false)};
+try{if(localStorage.getItem("jadwalMin")==="1")setMin(true)}catch(e){}
+
+if(!S[sel])sel=1;
+buildTabs();tick();setInterval(tick,1000);
+</script>
+</body>
+</html>
